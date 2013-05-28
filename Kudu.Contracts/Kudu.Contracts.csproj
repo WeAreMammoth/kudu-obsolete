@@ -43,6 +43,7 @@
     <Compile Include="Dropbox\DropboxDeltaInfo.cs" />
     <Compile Include="Dropbox\DropboxDeployInfo.cs" />
     <Compile Include="Editor\VfsStatEntry.cs" />
+    <Compile Include="Hooks\IHooksManager.cs" />
     <Compile Include="IEnvironment.cs" />
     <Compile Include="Infrastructure\IOperationLock.cs" />
     <Compile Include="Infrastructure\LockExtensions.cs" />

@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Kudu.Contracts.Infrastructure;
 using Kudu.Contracts.Settings;
 using Kudu.Contracts.Tracing;
+using Kudu.Core.Hooks;
 using Kudu.Core.Infrastructure;
 using Kudu.Core.Settings;
 using Kudu.Core.SourceControl;
@@ -28,6 +29,7 @@ namespace Kudu.Core.Deployment
         private readonly ILogger _globalLogger;
         private readonly IDeploymentSettingsManager _settings;
         private readonly IDeploymentStatusManager _status;
+        private readonly IHooksManager _hooksManager;
 
         private const string LogFile = "log.xml";
         private const string ManifestFile = "manifest";
@@ -41,7 +43,8 @@ namespace Kudu.Core.Deployment
                                  IDeploymentSettingsManager settings,
                                  IDeploymentStatusManager status,
                                  IOperationLock deploymentLock,
-                                 ILogger globalLogger)
+                                 ILogger globalLogger,
+                                 IHooksManager hooksManager)
         {
             _builderFactory = builderFactory;
             _environment = environment;
@@ -51,6 +54,7 @@ namespace Kudu.Core.Deployment
             _globalLogger = globalLogger ?? NullLogger.Instance;
             _settings = settings;
             _status = status;
+            _hooksManager = hooksManager;
         }
 
         private bool IsDeploying
@@ -226,6 +230,7 @@ namespace Kudu.Core.Deployment
                 if (statusFile != null)
                 {
                     statusFile.MarkFailed();
+                    _hooksManager.PublishPostDeployment(statusFile);
                 }
 
                 tracer.TraceError(ex);
@@ -504,6 +509,7 @@ namespace Kudu.Core.Deployment
                     innerLogger.Log(ex);
 
                     currentStatus.MarkFailed();
+                    _hooksManager.PublishPostDeployment(currentStatus);
 
                     deployStep.Dispose();
 
@@ -547,6 +553,7 @@ namespace Kudu.Core.Deployment
 
                         // End the deploy step
                         deployStep.Dispose();
+                           _hooksManager.PublishPostDeployment(currentStatus);
 
                         return;
                     }
@@ -638,6 +645,7 @@ namespace Kudu.Core.Deployment
 
                 IDeploymentStatusFile currentStatus = _status.Open(id);
                 currentStatus.MarkSuccess();
+                _hooksManager.PublishPostDeployment(currentStatus);
 
                 _status.ActiveDeploymentId = id;
             }
