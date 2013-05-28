@@ -10,6 +10,7 @@ using Kudu.Contracts.Settings;
 using Kudu.Contracts.Tracing;
 using Kudu.Core;
 using Kudu.Core.Deployment;
+using Kudu.Core.Hooks;
 using Kudu.Core.Infrastructure;
 using Kudu.Core.Settings;
 using Kudu.Core.SourceControl;
@@ -20,9 +21,9 @@ using XmlSettings;
 
 namespace Kudu.Console
 {
-    class Program
+    internal class Program
     {
-        static int Main(string[] args)
+        private static int Main(string[] args)
         {
             // Turn flag on in app.config to wait for debugger on launch
             if (ConfigurationManager.AppSettings["WaitForDebuggerOnStart"] == "true")
@@ -75,15 +76,17 @@ namespace Kudu.Console
 
             IRepository gitRepository = new GitExeRepository(env, settingsManager, traceFactory);
 
+            IHooksManager hooksManager = new HooksManager(tracer, env);
             var logger = new ConsoleLogger();
             IDeploymentManager deploymentManager = new DeploymentManager(builderFactory,
-                                                          env, 
-                                                          fileSystem, 
-                                                          traceFactory, 
+                                                          env,
+                                                          fileSystem,
+                                                          traceFactory,
                                                           settingsManager,
                                                           new DeploymentStatusManager(env, fileSystem, statusLock),
                                                           deploymentLock,
-                                                          GetLogger(env, level, logger));
+                                                          GetLogger(env, level, logger),
+                                                          hooksManager);
 
             var step = tracer.Step("Executing external process", new Dictionary<string, string>
             {

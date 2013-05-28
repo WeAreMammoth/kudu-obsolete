@@ -16,6 +16,7 @@ using Kudu.Contracts.Tracing;
 using Kudu.Core;
 using Kudu.Core.Commands;
 using Kudu.Core.Deployment;
+using Kudu.Core.Hooks;
 using Kudu.Core.Infrastructure;
 using Kudu.Core.Settings;
 using Kudu.Core.SourceControl;
@@ -168,6 +169,9 @@ namespace Kudu.Services.Web.App_Start
             kernel.Bind<ISiteBuilderFactory>().To<SiteBuilderFactoryDispatcher>()
                                              .InRequestScope();
 
+            kernel.Bind<IHooksManager>().To<HooksManager>()
+                                             .InRequestScope();
+
             kernel.Bind<ILogger>().ToMethod(context => GetLogger(environment, context.Kernel))
                                              .InRequestScope();
 
@@ -306,6 +310,10 @@ namespace Kudu.Services.Web.App_Start
             routes.MapHttpRoute("one-process-get", "diagnostics/processes/{id}", new { controller = "Process", action = "GetProcess" }, new { verb = new HttpMethodConstraint("GET") });
             routes.MapHttpRoute("one-process-delete", "diagnostics/processes/{id}", new { controller = "Process", action = "KillProcess" }, new { verb = new HttpMethodConstraint("DELETE") });
             routes.MapHttpRoute("one-process-dump", "diagnostics/processes/{id}/dump", new { controller = "Process", action = "MiniDump" }, new { verb = new HttpMethodConstraint("GET") });
+
+            // Hooks
+            routes.MapHttpRoute("subscribe-hook", "hooks/subscribe", new { controller = "Hooks", action = "Subscribe" }, new { verb = new HttpMethodConstraint("POST") });
+            routes.MapHttpRoute("unsubscribe-hook", "hooks/unsubscribe", new { controller = "Hooks", action = "Unsubscribe" }, new { verb = new HttpMethodConstraint("POST") });
         }
 
         private static ITracer GetTracer(IEnvironment environment, IKernel kernel)
