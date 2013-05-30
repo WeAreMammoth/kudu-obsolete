@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -26,6 +25,8 @@ namespace Kudu.Core.SourceControl.Git
             "fatal: HTTP request failed",
             "fatal: The remote end hung up unexpectedly"
         };
+
+        private static readonly string[] _lockFileNames = new[] { "index.lock", "HEAD.lock" };
 
         private readonly GitExecutable _gitExe;
         private readonly ITraceFactory _tracerFactory;
@@ -341,12 +342,17 @@ echo $i > pushinfo
         public void ClearLock()
         {
             // Delete the lock file from the .git folder
-            string lockFilePath = Path.Combine(_gitExe.WorkingDirectory, ".git", "index.lock");
-            if (File.Exists(lockFilePath))
+            var lockFiles = Directory.EnumerateFiles(Path.Combine(_gitExe.WorkingDirectory, ".git"), "*.lock", SearchOption.AllDirectories)
+                                     .Where(fullPath => _lockFileNames.Contains(Path.GetFileName(fullPath), StringComparer.OrdinalIgnoreCase))
+                                     .ToList();
+            if (lockFiles.Count > 0)
             {
                 ITracer tracer = _tracerFactory.GetTracer();
-                tracer.TraceWarning("Deleting left over index.lock file");
-                FileSystemHelpers.DeleteFileSafe(lockFilePath);
+                tracer.TraceWarning("Deleting left over lock file");
+                foreach (var file in lockFiles)
+                {
+                    FileSystemHelpers.DeleteFileSafe(file);
+                }
             }
         }
 
