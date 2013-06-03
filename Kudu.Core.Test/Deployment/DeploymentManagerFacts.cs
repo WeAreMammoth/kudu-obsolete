@@ -105,7 +105,7 @@ namespace Kudu.Core.Test.Deployment
                                  IDeploymentStatusManager status = null,
                                  IOperationLock deploymentLock = null,
                                  ILogger globalLogger = null,
-                                 IHooksManager hooksManager = null)
+                                 IWebHooksManager hooksManager = null)
         {
             builderFactory = builderFactory ?? Mock.Of<ISiteBuilderFactory>();
             environment = environment ?? Mock.Of<IEnvironment>();

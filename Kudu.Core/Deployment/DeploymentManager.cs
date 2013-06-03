@@ -29,7 +29,7 @@ namespace Kudu.Core.Deployment
         private readonly ILogger _globalLogger;
         private readonly IDeploymentSettingsManager _settings;
         private readonly IDeploymentStatusManager _status;
-        private readonly IHooksManager _hooksManager;
+        private readonly IWebHooksManager _hooksManager;
 
         private const string LogFile = "log.xml";
         private const string ManifestFile = "manifest";
@@ -44,7 +44,7 @@ namespace Kudu.Core.Deployment
                                  IDeploymentStatusManager status,
                                  IOperationLock deploymentLock,
                                  ILogger globalLogger,
-                                 IHooksManager hooksManager)
+                                 IWebHooksManager hooksManager)
         {
             _builderFactory = builderFactory;
             _environment = environment;
@@ -553,7 +553,7 @@ namespace Kudu.Core.Deployment
 
                         // End the deploy step
                         deployStep.Dispose();
-                           _hooksManager.PublishPostDeployment(currentStatus);
+                        _hooksManager.PublishPostDeployment(currentStatus);
 
                         return;
                     }

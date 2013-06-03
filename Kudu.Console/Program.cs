@@ -69,15 +69,18 @@ namespace Kudu.Console
             string lockPath = Path.Combine(env.SiteRootPath, Constants.LockPath);
             string deploymentLockPath = Path.Combine(lockPath, Constants.DeploymentLockFile);
             string statusLockPath = Path.Combine(lockPath, Constants.StatusLockFile);
+            string hooksLockPath = Path.Combine(lockPath, Constants.HooksLockFile);
+
             IOperationLock deploymentLock = new LockFile(deploymentLockPath, traceFactory, fileSystem);
             IOperationLock statusLock = new LockFile(statusLockPath, traceFactory, fileSystem);
+            IOperationLock hooksLock = new LockFile(hooksLockPath, traceFactory, fileSystem);
 
             IBuildPropertyProvider buildPropertyProvider = new BuildPropertyProvider();
             ISiteBuilderFactory builderFactory = new SiteBuilderFactory(buildPropertyProvider, env);
 
             IRepository gitRepository = new GitExeRepository(env, settingsManager, traceFactory);
 
-            IHooksManager hooksManager = new HooksManager(tracer, env);
+            IWebHooksManager hooksManager = new WebHooksManager(tracer, env, hooksLock, fileSystem);
             var logger = new ConsoleLogger();
             IDeploymentManager deploymentManager = new DeploymentManager(builderFactory,
                                                           env,

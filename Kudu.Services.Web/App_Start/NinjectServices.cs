@@ -129,14 +129,17 @@ namespace Kudu.Services.Web.App_Start
             string deploymentLockPath = Path.Combine(lockPath, Constants.DeploymentLockFile);
             string statusLockPath = Path.Combine(lockPath, Constants.StatusLockFile);
             string sshKeyLockPath = Path.Combine(lockPath, Constants.SSHKeyLockFile);
+            string hooksLockPath = Path.Combine(lockPath, Constants.HooksLockFile);
 
             var fileSystem = new FileSystem();
             var deploymentLock = new LockFile(deploymentLockPath, kernel.Get<ITraceFactory>(), fileSystem);
             var statusLock = new LockFile(statusLockPath, kernel.Get<ITraceFactory>(), fileSystem);
             var sshKeyLock = new LockFile(sshKeyLockPath, kernel.Get<ITraceFactory>(), fileSystem);
+            var hooksLock = new LockFile(hooksLockPath, kernel.Get<ITraceFactory>(), fileSystem);
 
             kernel.Bind<IOperationLock>().ToConstant(sshKeyLock).WhenInjectedInto<SSHKeyController>();
             kernel.Bind<IOperationLock>().ToConstant(statusLock).WhenInjectedInto<DeploymentStatusManager>();
+            kernel.Bind<IOperationLock>().ToConstant(hooksLock).WhenInjectedInto<WebHooksManager>();
             kernel.Bind<IOperationLock>().ToConstant(deploymentLock);
 
             var shutdownDetector = new ShutdownDetector();
@@ -171,7 +174,7 @@ namespace Kudu.Services.Web.App_Start
             kernel.Bind<ISiteBuilderFactory>().To<SiteBuilderFactory>()
                                              .InRequestScope();
 
-            kernel.Bind<IHooksManager>().To<HooksManager>()
+            kernel.Bind<IWebHooksManager>().To<WebHooksManager>()
                                              .InRequestScope();
 
             kernel.Bind<ILogger>().ToMethod(context => GetLogger(environment, context.Kernel))

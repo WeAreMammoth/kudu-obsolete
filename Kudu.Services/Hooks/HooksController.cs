@@ -9,9 +9,9 @@ namespace Kudu.Services.Hooks
     public class HooksController : ApiController
     {
         private readonly ITracer _tracer;
-        private readonly HooksManager _hooksManager;
+        private readonly WebHooksManager _hooksManager;
 
-        public HooksController(ITracer tracer, HooksManager hooksManager)
+        public HooksController(ITracer tracer, WebHooksManager hooksManager)
         {
             _tracer = tracer;
             _hooksManager = hooksManager;
@@ -20,14 +20,14 @@ namespace Kudu.Services.Hooks
         [HttpPost]
         public HttpResponseMessage Subscribe(SubscriptionRequest subscriptionRequest)
         {
-            _hooksManager.AddHook(subscriptionRequest.HookType, subscriptionRequest.HookAddress);
+            _hooksManager.AddWebHook(subscriptionRequest.HookType, subscriptionRequest.HookAddress);
             return new HttpResponseMessage { StatusCode = HttpStatusCode.Created };
         }
 
         [HttpPost]
         public HttpResponseMessage Unsubscribe(SubscriptionRequest subscriptionRequest)
         {
-            _hooksManager.RemoveHook(subscriptionRequest.HookAddress);
+            _hooksManager.RemoveWebHook(subscriptionRequest.HookAddress);
             return new HttpResponseMessage { StatusCode = HttpStatusCode.OK };
         }
     }
