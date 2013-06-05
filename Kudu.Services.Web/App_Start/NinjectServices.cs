@@ -317,8 +317,9 @@ namespace Kudu.Services.Web.App_Start
             routes.MapHttpRoute("one-process-dump", "diagnostics/processes/{id}/dump", new { controller = "Process", action = "MiniDump" }, new { verb = new HttpMethodConstraint("GET") });
 
             // Hooks
-            routes.MapHttpRoute("subscribe-hook", "hooks/subscribe", new { controller = "Hooks", action = "Subscribe" }, new { verb = new HttpMethodConstraint("POST") });
-            routes.MapHttpRoute("unsubscribe-hook", "hooks/unsubscribe", new { controller = "Hooks", action = "Unsubscribe" }, new { verb = new HttpMethodConstraint("POST") });
+            routes.MapHttpRoute("subscribe-hook", "hooks/subscribe", new { controller = "WebHooks", action = "Subscribe" }, new { verb = new HttpMethodConstraint("POST") });
+            routes.MapHttpRoute("unsubscribe-hook", "hooks/unsubscribe", new { controller = "WebHooks", action = "Unsubscribe" }, new { verb = new HttpMethodConstraint("DELETE") });
+            routes.MapHttpRoute("get-hooks", "hooks", new { controller = "WebHooks", action = "GetWebHooks" }, new { verb = new HttpMethodConstraint("GET") });
         }
 
         private static ITracer GetTracer(IEnvironment environment, IKernel kernel)

@@ -66,41 +66,32 @@ namespace Kudu.Core.Hooks
             }
         }
 
-        public void AddWebHook(HookEventType hookEventType, string hookAddress)
+        public void AddWebHook(WebHook webHook)
         {
             using (_tracer.Step("WebHooksManager.AddWebHook"))
             {
-                if (hookAddress == null)
+                if (webHook.HookAddress == null)
                 {
                     return;
                 }
 
-                hookAddress = hookAddress.Trim();
-
-                if (!Uri.IsWellFormedUriString(hookAddress, UriKind.RelativeOrAbsolute))
+                if (!Uri.IsWellFormedUriString(webHook.HookAddress, UriKind.RelativeOrAbsolute))
                 {
-                    throw new FormatException(Resources.Error_InvalidHookAddress.FormatCurrentCulture(hookAddress));
+                    throw new FormatException(Resources.Error_InvalidHookAddress.FormatCurrentCulture(webHook.HookAddress));
                 }
 
                 _hooksLock.LockOperation(() =>
                 {
                     IList<WebHook> webHooks = ReadWebHooksFromFile();
-                    if (!webHooks.Any(h => h.HookEventType == hookEventType && String.Equals(h.HookAddress, hookAddress, StringComparison.OrdinalIgnoreCase)))
+                    if (!webHooks.Any(h => h.HookEventType == webHook.HookEventType && String.Equals(h.HookAddress, webHook.HookAddress, StringComparison.OrdinalIgnoreCase)))
                     {
-                        webHooks.Add(new WebHook(hookEventType, hookAddress));
+                        webHooks.Add(webHook);
                         SaveHooksToFile(webHooks);
 
-                        _tracer.Trace("Added web hook: type - {0}, address - {1}", hookEventType, hookAddress);
+                        _tracer.Trace("Added web hook: type - {0}, address - {1}", webHook.HookEventType, webHook.HookAddress);
                     }
                 }, LockTimeout);
             }
-        }
-
-        public void PublishPostDeployment(IDeploymentStatusFile statusFile)
-        {
-            var jsonObject = JsonConvert.SerializeObject(statusFile, JsonSerializerSettings);
-
-            PublishToHooks(jsonObject, HookEventType.PostDeployment).Wait();
         }
 
         public void RemoveWebHook(string hookAddress)
@@ -117,20 +108,31 @@ namespace Kudu.Core.Hooks
             return WebHooks.Where(h => h.HookEventType == hookEventType);
         }
 
-        private async Task PublishToHook(HttpClient httpClient, WebHook webHook, string jsonObject)
+        public async Task PublishPostDeploymentAsync(IDeploymentStatusFile statusFile)
+        {
+            string jsonString = JsonConvert.SerializeObject(statusFile, JsonSerializerSettings);
+
+            await PublishToHooksAsync(jsonString, HookEventType.PostDeployment);
+        }
+
+        private async Task PublishToHookAsync(HttpClient httpClient, WebHook webHook, string jsonString)
         {
             try
             {
-                _tracer.Trace("Publish {0} to address - {1}, json - {2}", webHook.HookEventType, webHook.HookAddress, jsonObject.ToString());
-
-                HttpResponseMessage response = await httpClient.PostAsync(webHook.HookAddress, new StringContent(jsonObject.ToString()));
-
-                _tracer.Trace("Publish {0} to address - {1}, response - {2}", webHook.HookEventType, webHook.HookAddress, response.StatusCode);
-
-                // Handle 410 responses by removing the web hook
-                if (response.StatusCode == HttpStatusCode.Gone)
+                using (var content = new StringContent(jsonString))
                 {
-                    RemoveWebHook(webHook.HookAddress);
+                    _tracer.Trace("Publish {0} to address - {1}, json - {2}", webHook.HookEventType, webHook.HookAddress, jsonString);
+
+                    using (HttpResponseMessage response = await httpClient.PostAsync(webHook.HookAddress, content))
+                    {
+                        _tracer.Trace("Publish {0} to address - {1}, response - {2}", webHook.HookEventType, webHook.HookAddress, response.StatusCode);
+
+                        // Handle 410 responses by removing the web hook
+                        if (response.StatusCode == HttpStatusCode.Gone)
+                        {
+                            RemoveWebHook(webHook.HookAddress);
+                        }
+                    }
                 }
             }
             catch (Exception ex)
@@ -140,7 +142,7 @@ namespace Kudu.Core.Hooks
             }
         }
 
-        private async Task PublishToHooks(string jsonObject, HookEventType hookType)
+        private async Task PublishToHooksAsync(string jsonString, HookEventType hookType)
         {
             IEnumerable<WebHook> webHooks = GetWebHooks(hookType);
 
@@ -148,14 +150,12 @@ namespace Kudu.Core.Hooks
             {
                 using (var httpClient = new HttpClient())
                 {
-                    var tasks = new List<Task>();
+                    httpClient.Timeout = TimeSpan.FromSeconds(10);
 
                     foreach (var webHook in webHooks)
                     {
-                        tasks.Add(PublishToHook(httpClient, webHook, jsonObject));
+                        await PublishToHookAsync(httpClient, webHook, jsonString);
                     }
-
-                    await Task.WhenAll(tasks);
                 }
             }
         }

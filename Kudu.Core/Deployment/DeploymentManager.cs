@@ -155,6 +155,7 @@ namespace Kudu.Core.Deployment
 
         public async Task Deploy(IRepository repository, ChangeSet changeSet, string deployer, bool clean, bool needFileUpdate)
         {
+            Exception exception = null;
             ITracer tracer = _traceFactory.GetTracer();
             IDisposable deployStep = null;
             ILogger innerLogger = null;
@@ -222,6 +223,8 @@ namespace Kudu.Core.Deployment
             }
             catch (Exception ex)
             {
+                exception = ex;
+
                 if (innerLogger != null)
                 {
                     innerLogger.Log(ex);
@@ -230,7 +233,6 @@ namespace Kudu.Core.Deployment
                 if (statusFile != null)
                 {
                     statusFile.MarkFailed();
-                    _hooksManager.PublishPostDeployment(statusFile);
                 }
 
                 tracer.TraceError(ex);
@@ -239,8 +241,18 @@ namespace Kudu.Core.Deployment
                 {
                     deployStep.Dispose();
                 }
+            }
 
-                throw;
+            // Reload status file with latest updates
+            statusFile = _status.Open(id);
+            if (statusFile != null)
+            {
+                await _hooksManager.PublishPostDeploymentAsync(statusFile);
+            }
+
+            if (exception != null)
+            {
+                throw new DeploymentFailedException(exception);
             }
         }
 
@@ -509,7 +521,6 @@ namespace Kudu.Core.Deployment
                     innerLogger.Log(ex);
 
                     currentStatus.MarkFailed();
-                    _hooksManager.PublishPostDeployment(currentStatus);
 
                     deployStep.Dispose();
 
@@ -553,7 +564,6 @@ namespace Kudu.Core.Deployment
 
                         // End the deploy step
                         deployStep.Dispose();
-                        _hooksManager.PublishPostDeployment(currentStatus);
 
                         return;
                     }
@@ -645,7 +655,6 @@ namespace Kudu.Core.Deployment
 
                 IDeploymentStatusFile currentStatus = _status.Open(id);
                 currentStatus.MarkSuccess();
-                _hooksManager.PublishPostDeployment(currentStatus);
 
                 _status.ActiveDeploymentId = id;
             }
